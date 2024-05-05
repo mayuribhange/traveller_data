@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard</title>
+<style>
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    th {
+        background-color: #f2f2f2;
+    }
+    .btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .btn-update {
+        background-color: #008CBA;
+        color: white;
+    }
+    .btn-add {
+        background-color: #4CAF50;
+        color: white;
+    }
+</style>
+</head>
+<body>
+
+<h1>Dashboard</h1>
+
+<!-- Add Category Form (initially hidden) -->
+<form id="addCategoryForm" style="display: none;">
+    <label for="newCategoryName">Name:</label>
+    <input type="text" id="newCategoryName" name="categoryName" required>
+    <button type="submit">Add</button>
+</form>
+
+<!-- Button to show/hide the add category form -->
+<button class="btn btn-add" id="showAddCategoryForm">Add Category</button>
+
+<table id="categoriesTable">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Categories will be dynamically added here -->
+    </tbody>
+</table>
+
+<!-- Update Category Form (initially hidden) -->
+<form id="updateCategoryForm" style="display: none;">
+    <input type="hidden" id="updateCategoryId" name="categoryId">
+    <label for="updateCategoryName">Name:</label>
+    <input type="text" id="updateCategoryName" name="categoryName" required>
+    <button type="submit">Update</button>
+</form>
+
+<script>
+var token = localStorage.getItem('token');
+document.addEventListener("DOMContentLoaded", function() {
+    fetchCategories(token);
+});
+
+function fetchCategories(token) {
+    fetch('http://localhost:8000/categories', {
+        method: 'GET',
+        headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to fetch categories');
+        }
+        return response.json();
+    })
+    .then(categories => {
+        displayCategories(categories);
+    })
+    .catch(error => {
+        console.error('Error fetching categories:', error);
+    });
+}
+
+function displayCategories(categories) {
+    const tableBody = document.querySelector('#categoriesTable tbody');
+    tableBody.innerHTML = ''; // Clear existing table rows
+
+    categories.data.forEach(category => {
+        const row = `
+            <tr>
+                <td>${category.categoryId}</td>
+                <td>${category.categoryName}</td>
+                <td>
+                    <button class="btn btn-update" onclick="showUpdateForm(${category.categoryId}, '${category.categoryName}')">Update</button>
+                    <button class="btn btn-delete" onclick="deleteCategory(${category.categoryId})">Delete</button>
+                    <button class="btn btn-primary" onclick="showServices(${category.categoryId})">Show services</button>
+                    <button class="btn btn-primary" onclick="addServices(${category.categoryId})">Add services</button>
+                </td>
+            </tr>
+            <tr id="servicesRow_${category.categoryId}" style="display: none;">
+                <td colspan="3">
+                    <table class="servicesTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>priceOptions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="servicesBody_${category.categoryId}">
+                            <!-- Services will be dynamically added here -->
+                        </tbody>
+                    </table>
+                </td>
+                <tr id="addServicesRow_${category.categoryId}" style="display: none;">
+                    <td colspan="3">
+                        <form id="addServicesForm_${category.categoryId}" onsubmit="handleAddServicesFormSubmit(event, ${category.categoryId})">
+                            <label for="newServiceName_${category.categoryId}">Service Name:</label>
+                            <input type="text" id="newServiceName_${category.categoryId}" name="serviceName" required>
+                            <label for="newServiceType_${category.categoryId}">Service Type:</label>
+                            <input type="text" id="newServiceType_${category.categoryId}" name="serviceType" required>
+                            <label for="newPriceOptions_${category.categoryId}">Price Options (JSON):</label>
+                            <textarea id="newPriceOptions_${category.categoryId}" name="priceOptions" rows="4" required></textarea>
+                            <button type="submit">Add Service</button>
+                        </form>
+                    </td>
+                </tr>
+
+            </tr>`;
+        tableBody.innerHTML += row;
+    });
+}
+
+function addServices(categoryId) {
+    const addServicesRow = document.getElementById(`addServicesRow_${categoryId}`);
+    if (addServicesRow.style.display === "none") {
+        // Show the add services row if it's hidden
+        addServicesRow.style.display = "table-row";
+    } else {
+        // Hide the add services row if it's already visible
+        addServicesRow.style.display = "none";
+    }
+}
+
+function handleAddServicesFormSubmit(event, categoryId) {
+    event.preventDefault(); // Prevent default form submission behavior
+
+    // Extract form data
+    const form = document.getElementById(`addServicesForm_${categoryId}`);
+    const formData = new FormData(form);
+    const serviceName = formData.get('serviceName');
+    const serviceType = formData.get('serviceType');
+    const priceOptionsJson = formData.get('priceOptions');
+    const priceOptions = JSON.parse(priceOptionsJson);
+
+    // Make the API call to add the services
+    fetch(`http://localhost:8000/category/${categoryId}/service`, {
+        method: 'POST',
+        headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            serviceName: serviceName,
+            type: serviceType,
+            priceOptions: priceOptions
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            alert(`Unable to post services data`);
+            throw new Error('Failed to add services');
+        }
+        return response.json();
+    })
+    .then(data => {
+        // Handle successful API response
+        alert('Services added successfully');
+        fetchCategories(token);
+    })
+    .catch(error => {
+        console.error('Error adding services:', error);
+    });
+
+    // Hide the add services form after submission
+    document.getElementById(`addServicesRow_${categoryId}`).style.display = "none";
+}
+
+
+function showUpdateForm(categoryId, categoryName) {
+    // Show the update form
+    document.getElementById("updateCategoryId").value = categoryId;
+    document.getElementById("updateCategoryName").value = categoryName;
+    document.getElementById("updateCategoryForm").style.display = "block";
+}
+
+function deleteCategory(categoryId){
+    var confirmDelete = window.confirm(`Sure want to delete category with ID ${categoryId}?`);
+    if (confirmDelete) {
+    fetch(`http://localhost:8000/category/${categoryId}`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+     
+        if (!response.ok) {
+            alert(`Unable to delete category`);
+            throw new Error('Failed to fetch categories');
+        }
+        
+        return response.json();
+    })
+    .then(categories => {
+        alert(`Category with ID ${categoryId} deleted successfully.`);
+        fetchCategories(token);
+    })
+    .catch(error => {
+        console.error('Error fetching categories:', error);
+    });
+}
+else{
+    alert("Deletion cancelled.");
+}
+}
+
+// Add event listener for update category form submission
+document.getElementById("updateCategoryForm").addEventListener("submit", function(event) {
+    event.preventDefault();
+
+    var categoryId = document.getElementById("updateCategoryId").value;
+    var categoryName = document.getElementById("updateCategoryName").value;
+
+    // Implement logic to update category
+
+    alert(`Update category with ID ${categoryId} and name ${categoryName}`);
+    fetch(`http://localhost:8000/category/${categoryId}`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            categoryName: categoryName
+        })
+    })
+    .then(response => {
+    
+        if (!response.ok) {
+            alert(`Unable to update category data`);
+            throw new Error('Failed to fetch categories');
+        }
+        
+        return response.json();
+    })
+    .then(categories => {
+        alert(`${categories?.message}`);
+      
+        fetchCategories(token);
+    })
+    .catch(error => {
+        console.error('Error fetching categories:', error);
+    });
+    // Hide the update form after submission
+    document.getElementById("updateCategoryForm").style.display = "none";
+});
+
+// Add event listener for showing add category form
+document.getElementById("showAddCategoryForm").addEventListener("click", function() {
+    document.getElementById("addCategoryForm").style.display = "block";
+});
+
+
+// Add event listener for add category form submission
+document.getElementById("addCategoryForm").addEventListener("submit", function(event) {
+    event.preventDefault();
+
+    var newCategoryName = document.getElementById("newCategoryName").value;
+
+    // Implement logic to add category
+    alert(`Add category with name ${newCategoryName}`);
+    fetch(`http://localhost:8000/category`, {
+        method: 'POST',
+        headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            categoryName: newCategoryName
+        })
+    })
+    .then(response => {
+ 
+        if (!response.ok) {
+            alert(`Unable to post category data`);
+            throw new Error('Failed to add category');
+        }
+        
+        return response.json();
+    })
+    .then(category => {
+        alert(`Category added successfully.`);
+        fetchCategories(token);
+    })
+    .catch(error => {
+        console.error('Error adding category:', error);
+    });
+
+    // Clear input field and hide the add category form after submission
+    document.getElementById("newCategoryName").value = '';
+    document.getElementById("addCategoryForm").style.display = "none";
+});
+function showServices(categoryId) {
+    const servicesRow = document.getElementById(`servicesRow_${categoryId}`);
+    const servicesBody = document.getElementById(`servicesBody_${categoryId}`);
+
+    fetch(`http://localhost:8000/category/${categoryId}/services`, {
+        method: 'GET',
+        headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            alert(`Unable to show services data`);
+            throw new Error('Failed to fetch categories');
+        }
+        return response.json();
+    })
+    .then(categories => {
+        displayCategories(categories);
+    })
+    .catch(error => {
+        console.error('Error fetching categories:', error);
+    });
+}
+
+function showServices(categoryId) {
+    const servicesRow = document.getElementById(`servicesRow_${categoryId}`);
+    const servicesBody = document.getElementById(`servicesBody_${categoryId}`);
+
+    if (servicesRow.style.display === "none") {
+        // Show the services row if it's hidden
+        servicesRow.style.display = "table-row";
+        fetch(`http://localhost:8000/category/${categoryId}/services`, {
+        method: 'GET',
+        headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            alert(`Unable to get services data`);
+            throw new Error('Failed to fetch categories');
+        }
+        return response.json();
+    })
+    .then(services => {
+       
+        servicesBody.innerHTML = '';
+
+        services.data.forEach(service => {
+    const serviceRow = `
+        <tr>
+            <td>${service.serviceId}</td>
+            <td>${service.serviceName}</td>
+            <td>${service.type}</td>
+            <td>${JSON.stringify(service.priceOptions)}</td>
+            <td>
+                <button class="btn btn-update" onclick="toggleUpdateForm(${service.serviceId})">Update</button>
+            </td>
+            <td>
+                <button class="btn btn-delete" onclick="deleteService(${service.serviceId}, ${categoryId})">delete</button>
+            </td>
+        </tr>
+        <tr id="updateFormRow_${service.serviceId}" style="display: none;">
+            <td colspan="6">
+                <form id="updateForm_${service.serviceId}" onsubmit="handleUpdateFormSubmit(event, ${service.serviceId}, ${categoryId})">
+                    <label for="updateServiceName_${service.serviceId}">Service Name:</label>
+                    <input type="text" id="updateServiceName_${service.serviceId}" name="serviceName" value="${service.serviceName}" required>
+                    <label for="updateServiceType_${service.serviceId}">Service Type:</label>
+                    <input type="text" id="updateServiceType_${service.serviceId}" name="serviceType" value="${service.type}" required>
+                    <label for="updatePriceOptions_${service.serviceId}">Price Options (JSON):</label>
+                    <textarea id="updatePriceOptions_${service.serviceId}" name="priceOptions" rows="4" required>${JSON.stringify(service.priceOptions)}</textarea>
+                    <button type="submit">Submit</button>
+                </form>
+            </td>
+        </tr>`;
+    servicesBody.innerHTML += serviceRow;
+});
+
+    })
+    .catch(error => {
+        console.error('Error fetching categories:', error);
+    });
+    } else {
+        // Hide the services row if it's already visible
+        servicesRow.style.display = "none";
+    }
+}
+
+function toggleUpdateForm(serviceId) {
+    const updateFormRow = document.getElementById(`updateFormRow_${serviceId}`);
+    if (updateFormRow.style.display === "none") {
+        // Show the update form row if it's hidden
+        updateFormRow.style.display = "table-row";
+    } else {
+        // Hide the update form row if it's already visible
+        updateFormRow.style.display = "none";
+    }
+}
+
+function handleUpdateFormSubmit(event, serviceId, categoryId) {
+    event.preventDefault(); // Prevent default form submission behavior
+
+    // Extract form data
+    const form = document.getElementById(`updateForm_${serviceId}`);
+    const formData = new FormData(form);
+    const serviceName = formData.get('serviceName');
+    const serviceType = formData.get('serviceType');
+    const priceOptionsJson = formData.get('priceOptions');
+    const priceOptions = JSON.parse(priceOptionsJson);
+
+    // Make the API call to update the service
+    fetch(`http://localhost:8000/category/${categoryId}/service/${serviceId}`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            serviceName: serviceName,
+            type: serviceType,
+            priceOptions: priceOptions
+        })
+    })
+    .then(response => { 
+        if (!response.ok) {
+            alert(`Unable to update services data`);
+            throw new Error('Failed to update service');
+        }
+        return response.json();
+    })
+    .then(data => {
+        // Handle successful API response
+        alert('Service updated successfully');
+       
+       fetchCategories(token) 
+    }) 
+    .catch(error => {
+        console.error('Error updating service:', error);
+    });
+}
+
+function deleteService(serviceId, categoryId) {
+    try {
+        var confirmDelete = window.confirm(`Sure want to delete service with ID ${serviceId}?`);
+    if (confirmDelete) {
+    fetch(`http://localhost:8000/category/${categoryId}/service/${serviceId}`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+   
+        if (!response.ok) {
+            alert(`Unable to delete services data`);
+            throw new Error('Failed to fetch categories');
+        }
+        
+        return response.json();
+    })
+    .then(Services => {
+        alert(`Services with ID ${serviceId} deleted successfully.`);
+      
+        fetchCategories(token);
+    })
+    .catch(error => {
+        console.error('Error fetching categories:', error);
+    });
+}
+else{
+    alert("Deletion cancelled.");
+}
+    } catch (error) {
+        console.error(error);
+    }
+}
+</script>
+
+</body>
+</html>
