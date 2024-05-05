@@ -27,6 +27,8 @@ export const updateServices = async (
     }
     const VALID_SCHEMA = updateServicesValidator();
     const VALIDATED_RESULT = await VALID_SCHEMA.validate(request.body);
+    console.log(VALIDATED_RESULT);
+    
     if(VALIDATED_RESULT?.error){
         return response.status(400).json({ message: VALIDATED_RESULT.error.details[0].message})
     }

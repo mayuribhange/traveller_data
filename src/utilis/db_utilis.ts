@@ -113,10 +113,10 @@ export const insertServicesValues = async (
       arrayOfIds: any = [];
     if (res.affectedRows > 0) {
       priceOptions = await priceOptions.map(async (prices: any) => {
-        let sql = `Insert into service_price_options (duration, type, serviceId ) values(?,?,?);`;
+        let sql = `Insert into service_price_options (duration, type, price, serviceId ) values(?,?,?,?);`;
         const result = await connection
           .promise()
-          .query(sql, [prices?.duration, prices?.type, res?.insertId]);
+          .query(sql, [prices?.duration, prices?.type,prices?.price, res?.insertId]);
         let servicesPriceOptions: any = result[0];
         
         if (res.affectedRows > 0) {
@@ -172,10 +172,10 @@ export const updateServiceById = async (
     priceOptions = await priceOptions.map(async (prices: any) => {
       
 
-      let sql = `Update service_price_options set duration= ?, type =? where priceOptionsId= ?;`;
+      let sql = `Update service_price_options set price= ?, duration= ?, type =? where priceOptionsId= ?;`;
       const result = await connection
         .promise()
-        .query(sql, [prices?.duration, prices?.type, prices?.priceOptionsId]);
+        .query(sql, [prices?.price, prices?.duration, prices?.type, prices?.priceOptionsId]);
      
 
       let res: any = result[0];

@@ -16,7 +16,7 @@ export const loginValidator = ()=>{
 export const addCategoriesValidator = ()=>{
     const VALID_SCHEMA= joi.object().keys({
        categoryName: joi.string().required()
-    });
+    }).unknown();
     return VALID_SCHEMA;
 }
 
@@ -28,9 +28,10 @@ export const addServicesValidator = ()=>{
             joi.object({
                 duration: joi.number().required(),
                 type: joi.string().required(),
-            })
+                price: joi.string().required()
+            }).unknown()
         ).required()
-    });
+    }).unknown();
     return VALID_SCHEMA;
 }
 
@@ -42,7 +43,9 @@ export const updateServicesValidator = ()=>{
             joi.object({
                 duration: joi.number().required(),
                 type: joi.string().required(),
-            })
+                price: joi.string(),
+                priceOptionsId: joi.number().required()
+            }).unknown()
         ).required()
     });
     return VALID_SCHEMA;
@@ -51,6 +54,6 @@ export const updateServicesValidator = ()=>{
 export const upadteCategoriesValidator = ()=>{
     const VALID_SCHEMA= joi.object().keys({
        categoryName: joi.string()
-    });
+    }).unknown();
     return VALID_SCHEMA;
 }
